@@ -28,6 +28,7 @@ public class Program {
 //		}
 		
 		String directory = "D:\\walterlucas\\Documents\\cpp-evolution-paper\\projects";
-		CommitsCompare.compare(list, directory);
+		String results_dir = "D:\\walterlucas\\Documents\\cpp-evolution-paper\\out\\results.csv";
+		CommitsCompare.compare(list, directory,results_dir);
 	}
 }
