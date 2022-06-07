@@ -143,7 +143,6 @@ public class CommitsCompare {
 							results_dir.replaceAll("results.csv", "") + data[0] + ".md","+");
 				}
 				
-//				deletedLines.stream().forEach(System.out::println);
 
 				commits = linesInMethods;
 				System.out.println("TOTAL: "+commits.size());
