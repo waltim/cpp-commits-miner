@@ -13,10 +13,11 @@ public class CSVReader {
 	public int previousAuto = 0;
 	public int previousRangedFor = 0;
 	public int previousConstExpr = 0;
+	public int previousStatements = 0;
 	public String previousHash = null;
 	public String previousDate = null;
 	public int previousFiles = 0;
-	public int step = 100;
+	public float step = 0.5f;
 	
 	public List<String> interestingCases = new ArrayList<String>();
 
@@ -26,8 +27,7 @@ public class CSVReader {
 		String line = "";
 		String splitBy = ",";
 
-		try (// parsing a CSV file into BufferedReader class constructor
-				BufferedReader br = new BufferedReader(new FileReader(path))) {
+		try (BufferedReader br = new BufferedReader(new FileReader(path))) {
 			while ((line = br.readLine()) != null) {
 
 				String[] commit = line.split(splitBy);
@@ -49,8 +49,6 @@ public class CSVReader {
 					CheckChangesIsInteresting(Integer.parseInt(commit[5]), "auto", currentProject, commit[1],
 							commit[2],Integer.parseInt(commit[3]),Integer.parseInt(commit[16]));
 					CheckChangesIsInteresting(Integer.parseInt(commit[7]), "ranged-for", currentProject, commit[1],
-							commit[2],Integer.parseInt(commit[3]),Integer.parseInt(commit[16]));
-					CheckChangesIsInteresting(Integer.parseInt(commit[8]), "constExpr", currentProject, commit[1],
 							commit[2],Integer.parseInt(commit[3]),Integer.parseInt(commit[16]));
 
 					previousHash = commit[2];
@@ -74,12 +72,12 @@ public class CSVReader {
 							commit[2],Integer.parseInt(commit[3]),Integer.parseInt(commit[16]));
 					CheckChangesIsInteresting(Integer.parseInt(commit[7]), "ranged-for", currentProject, commit[1],
 							commit[2],Integer.parseInt(commit[3]),Integer.parseInt(commit[16]));
-					CheckChangesIsInteresting(Integer.parseInt(commit[8]), "constExpr", currentProject, commit[1],
-							commit[2],Integer.parseInt(commit[3]),Integer.parseInt(commit[16]));
 
 					previousHash = commit[2];
 					previousDate = commit[1];
 				}
+				
+				previousStatements = Integer.parseInt(commit[16]);
 
 			}
 			br.close();
@@ -91,31 +89,31 @@ public class CSVReader {
 
 	}
 
-	
+//	feature + (feature * 0.5) > feature && statements < statements + (statements * 0.5)  --> por projeto
 	
 	public void CheckChangesIsInteresting(int value, String feature, String project, String date, String hash, int files, int statements)
 			throws Exception {
 		switch (feature) {
 		case "lambda":
-			if (previousLambda * 2 <= value && previousLambda > step) {
+			if (value > previousLambda + (previousLambda * step) && statements < previousStatements + (previousStatements * 0.05) && previousLambda > 20) {
 				interestingCases.add(project + "," + previousDate + ","+ previousHash + "," + previousLambda + "," + date + ","+ hash + "," + value + "," + feature + ",addtions");
-			} else if (value * 2 < previousLambda && previousLambda > step) {
+			} else if (value < previousLambda * step && statements < previousStatements * 0.05 && previousLambda > 20) {
 				interestingCases.add(project + "," + previousDate + ","+ previousHash + "," + previousLambda + "," + date + ","+ hash + "," + value + "," + feature + ",deletions");
 			}
 			previousLambda = value;
 			break;
 		case "auto":
-			if (previousAuto * 2 <= value && previousAuto > step) {
+			if (value > previousAuto + (previousAuto * step) && statements < previousStatements + (previousStatements * 0.05) && previousAuto > 20) {
 				interestingCases.add(project + "," + previousDate + ","+ previousHash + "," + previousAuto + "," + date + ","+ hash + "," + value + "," + feature + ",addtions");
-			} else if (value * 2 < previousAuto && previousAuto > step) {
+			} else if (value < previousAuto * step && statements < previousStatements * 0.05 && previousAuto > 20) {
 				interestingCases.add(project + "," + previousDate + ","+ previousHash + "," + previousAuto + "," + date + ","+ hash + "," + value + "," + feature + ",deletions");
 			}
 			previousAuto = value;
 			break;
 		case "ranged-for":
-			if (previousRangedFor * 2 <= value && previousRangedFor > step) {
+			if (value > previousRangedFor + (previousRangedFor * step) && statements < previousStatements + (previousStatements * 0.05)  && previousRangedFor > 20) {
 				interestingCases.add(project + "," + previousDate + ","+ previousHash + "," + previousRangedFor + "," + date + ","+ hash + "," + value + "," + feature + ",addtions");
-			} else if (value * 2 < previousRangedFor && previousRangedFor > step) {
+			} else if (value < previousRangedFor * step && statements < previousStatements * 0.05  && previousRangedFor > 20) {
 				interestingCases.add(project + "," + previousDate + ","+ previousHash + "," + previousRangedFor + "," + date + ","+ hash + "," + value + "," + feature + ",deletions");
 			}
 			previousRangedFor = value;

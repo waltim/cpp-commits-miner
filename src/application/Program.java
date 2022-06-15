@@ -1,5 +1,10 @@
 package application;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.PrintStream;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -14,21 +19,22 @@ public class Program {
 
 		List<String> list = specialCases.stream().collect(Collectors.toList());
 
-//		try {
-//			Files.deleteIfExists(Paths.get("D:\\walterlucas\\Documents\\cpp-evolution-paper\\datasets\\specialCases.csv"));
-//			PrintStream fileStream = new PrintStream(new File("D:\\walterlucas\\Documents\\cpp-evolution-paper\\datasets\\specialCases.csv"));
-//			for (String project : list) {
-//				fileStream.println(project.toString());
-//			}
-//			fileStream.close();
-//			System.out.println("Successfully wrote to the file.");
-//		} catch (IOException e) {
-//			System.out.println("An error occurred.");
-//			e.printStackTrace();
-//		}
+		try {
+			Files.deleteIfExists(Paths.get("D:\\walterlucas\\Documents\\cpp-evolution-paper\\datasets\\specialCases.csv"));
+			PrintStream fileStream = new PrintStream(new File("D:\\walterlucas\\Documents\\cpp-evolution-paper\\datasets\\specialCases.csv"));
+			for (String project : list) {
+				fileStream.println(project.toString());
+			}
+			fileStream.close();
+			System.out.println("Successfully wrote to the file.");
+		} catch (IOException e) {
+			System.out.println("An error occurred.");
+			e.printStackTrace();
+		}
 		
-		String directory = "D:\\walterlucas\\Documents\\cpp-evolution-paper\\projects";
-		String results_dir = "D:\\walterlucas\\Documents\\cpp-evolution-paper\\out\\results.csv";
-		CommitsCompare.compare(list, directory,results_dir);
+//		String directory = "D:\\walterlucas\\Documents\\cpp-evolution-paper\\projects";
+//		String results_dir = "D:\\walterlucas\\Documents\\cpp-evolution-paper\\out\\results.csv";
+//		String result = CommitsCompare.compare(list, directory,results_dir);
+//		System.out.println(result);
 	}
 }
