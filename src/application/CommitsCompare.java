@@ -42,12 +42,12 @@ import br.unb.cic.cpp.evolution.io.FileCSV;
 public class CommitsCompare {
 
 	public static List<String> commits;
+	public static Set<String> revCommitsAnalyzed = new HashSet<String>();
+	public static Set<String> modernizeCommits = new HashSet<String>();
+	public static Set<String> modernizeCommitsMsg = new HashSet<String>();
 
 //	@SuppressWarnings("finally")
-	public static Set<String> compare(List<String> cases, String directory, String results_dir) throws IOException {
-
-		Set<String> modernizeCommits = new HashSet<String>();
-		Set<String> modernizeCommitsMsg = new HashSet<String>();
+	public static Set<String> compare(List<String> cases, String directory, String results_dir, String path) throws IOException {
 
 		cloneRepositories(cases, directory);
 
@@ -80,63 +80,55 @@ public class CommitsCompare {
 			String projectPath = directory + "\\" + data[0];
 			String projectName = data[0];
 
+			String since = data[2];
+			String until = data[5];
+
 			try {
-				SimpleDateFormat sdf = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss");
 
-				File file = new File(results_dir);
-
-				String start = sdf.format(file.lastModified());
-
-				findEffortsToModernize(data[2], data[5], results_dir, projectName, projectPath, featureChanged);
-
-				String end = sdf.format(file.lastModified());
-
-				if (!start.equals(end)) {
-					modernizeCommits.addAll(
-							CheckForModernizationIncidents(results_dir, projectName, projectPath, featureChanged));
-					modernizeCommits.stream().forEach(System.out::println);
-				}
-
-				PrintStream fileStream = new PrintStream(
-						new File("D:\\walterlucas\\Documents\\cpp-evolution-paper\\datasets\\modernizations.csv"));
-				for (String mc : modernizeCommits) {
-					fileStream.println(mc);
-				}
-				fileStream.close();
-
-				String[] words = { "modern", "modernize", "port away", "migrate", "migration", "use ", "c++11", "c++14",
-						"c++17", "c++20" };
-				String[] autoKeywords = { " auto ", "'auto'", " auto*" };
-				String[] rangeKeywords = { "ranged", "range-based", " range " };
-				String[] lambdaKeywords = { "lambda" };
-
-				if (featureChanged.equals("ranged-for")) {
-					modernizeCommitsMsg.addAll(findEffortsToModernizeInCommitMsgs(results_dir, projectName, projectPath,
-							featureChanged, words, rangeKeywords));
-				}
-				if (featureChanged.equals("auto")) {
-					modernizeCommitsMsg.addAll(findEffortsToModernizeInCommitMsgs(results_dir, projectName, projectPath,
-							featureChanged, words, autoKeywords));
-				}
-				if (featureChanged.equals("lambda")) {
-					modernizeCommitsMsg.addAll(findEffortsToModernizeInCommitMsgs(results_dir, projectName, projectPath,
-							featureChanged, words, lambdaKeywords));
-				}
-
-				PrintStream fileStreamMsg = new PrintStream(
-						new File("D:\\walterlucas\\Documents\\cpp-evolution-paper\\datasets\\modernizations-msgs.csv"));
-				for (String mcm : modernizeCommitsMsg) {
-					fileStreamMsg.println(mcm);
-				}
-				fileStreamMsg.close();
+				specialCases(since, until, results_dir, projectName, projectPath, featureChanged, path);
+				
+				modernizeInCommitMsgs(since, until, results_dir, projectName, projectPath, featureChanged, path);
 
 			} catch (Exception e) {
 				System.out.println(e.getMessage());
 				e.getStackTrace();
 			}
+			
 		}
 
 		return modernizeCommits;
+	}
+
+	private static void specialCases(String since, String until, String results_dir, String projectName,
+			String projectPath, String featureChanged, String path) throws Exception {
+
+		SimpleDateFormat sdf = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss");
+
+		File file = new File(results_dir);
+
+		String start = sdf.format(file.lastModified());
+
+		findEffortsToModernize(since, until, results_dir, projectName, projectPath, featureChanged);
+
+		String end = sdf.format(file.lastModified());
+
+		if (!start.equals(end)) {
+			
+			Integer mcCount = modernizeCommits.size();
+
+			modernizeCommits
+					.addAll(CheckForModernizationIncidents(results_dir, projectName, projectPath, featureChanged, path));
+
+			if(mcCount < modernizeCommits.size()) {
+				PrintStream fileStream = new PrintStream(
+						new File(path+"datasets"+osValidation.osBarLine()+"modernizations.csv"));
+
+				for (String mc : modernizeCommits) {
+					fileStream.println(mc);
+				}
+				fileStream.close();
+			}
+		}
 	}
 
 	public static boolean containsWords(String input, String[] words) {
@@ -148,8 +140,48 @@ public class CommitsCompare {
 		return false;
 	}
 
-	private static List<String> findEffortsToModernizeInCommitMsgs(String results_dir, String projectName,
-			String projectPath, String featureChanged, String[] words, String[] keywords) throws Exception {
+	private static void modernizeInCommitMsgs(String since, String until, String results_dir, String projectName,
+			String projectPath, String featureChanged, String path) throws Exception {
+
+		
+
+		String[] words = { "modern", "modernize", "port away", "migrate", "migration", "use ", "c++11", "c++14",
+				"c++17", "c++20", "migrating", "replace", "replaced" };
+		String[] autoKeywords = { " auto ", "'auto'", " auto*", "'auto'" };
+		String[] rangeKeywords = { "ranged", "range-based", "range based", "for-range", "modern for" };
+		String[] lambdaKeywords = { "lambda", " lambda " };
+
+		String[] wildcardWords = { "modernize code", "clang-tidy", "from q_foreach", "q_foreach porting" };
+
+		Integer mcmCount = modernizeCommitsMsg.size();
+
+		if (featureChanged.equals("ranged-for")) {
+			modernizeCommitsMsg.addAll(findEffortsToModernizeInCommitMsgs(since, until, results_dir, projectName,
+					projectPath, featureChanged, words, rangeKeywords, wildcardWords));
+		}
+		if (featureChanged.equals("auto")) {
+			modernizeCommitsMsg.addAll(findEffortsToModernizeInCommitMsgs(since, until, results_dir, projectName,
+					projectPath, featureChanged, words, autoKeywords, wildcardWords));
+		}
+		if (featureChanged.equals("lambda")) {
+			modernizeCommitsMsg.addAll(findEffortsToModernizeInCommitMsgs(since, until, results_dir, projectName,
+					projectPath, featureChanged, words, lambdaKeywords, wildcardWords));
+		}
+		if (mcmCount < modernizeCommitsMsg.size()) {
+			PrintStream fileStreamMsg = new PrintStream(
+					new File(path+"datasets"+osValidation.osBarLine()+"modernizations-msgs.csv"));
+			for (String mcm : modernizeCommitsMsg) {
+				fileStreamMsg.println(mcm);
+			}
+			fileStreamMsg.close();
+		}else {
+			System.out.println(modernizeCommitsMsg.size());
+		}
+	}
+
+	private static List<String> findEffortsToModernizeInCommitMsgs(String since, String until, String results_dir,
+			String projectName, String projectPath, String featureChanged, String[] words, String[] keywords,
+			String[] wildcardWords) throws Exception {
 
 		File project = new File(projectPath);
 
@@ -174,44 +206,31 @@ public class CommitsCompare {
 
 			if (containsWords(shortMsg, words) && containsWords(shortMsg, keywords)) {
 				commitHashs.add(projectName + "," + sdf.format(revC.getAuthorIdent().getWhen()) + "," + revC.getName()
-						+ "," + revC.getAuthorIdent().getName() + "," + revC.getAuthorIdent().getEmailAddress());
+						+ "," + revC.getAuthorIdent().getName() + "," + revC.getAuthorIdent().getEmailAddress() + ","
+						+ featureChanged);
 				break;
 			} else if (containsWords(shortMsg, words) && containsWords(fullMsg, keywords)) {
 				commitHashs.add(projectName + "," + sdf.format(revC.getAuthorIdent().getWhen()) + "," + revC.getName()
-						+ "," + revC.getAuthorIdent().getName() + "," + revC.getAuthorIdent().getEmailAddress());
+						+ "," + revC.getAuthorIdent().getName() + "," + revC.getAuthorIdent().getEmailAddress() + ","
+						+ featureChanged);
 				break;
-			} else if (containsWords(shortMsg, keywords)) {
+			} else if (containsWords(shortMsg, wildcardWords) && containsWords(fullMsg, keywords)) {
 				commitHashs.add(projectName + "," + sdf.format(revC.getAuthorIdent().getWhen()) + "," + revC.getName()
-						+ "," + revC.getAuthorIdent().getName() + "," + revC.getAuthorIdent().getEmailAddress());
+						+ "," + revC.getAuthorIdent().getName() + "," + revC.getAuthorIdent().getEmailAddress() + ","
+						+ featureChanged);
+				break;
+			} else if (containsWords(shortMsg, wildcardWords) && containsWords(shortMsg, keywords)) {
+				commitHashs.add(projectName + "," + sdf.format(revC.getAuthorIdent().getWhen()) + "," + revC.getName()
+						+ "," + revC.getAuthorIdent().getName() + "," + revC.getAuthorIdent().getEmailAddress() + ","
+						+ featureChanged);
 				break;
 			}
 		}
-
+		
 		git.close();
 
 		return commitHashs;
 	}
-
-//	private static String changeDates(String date, String type) {
-//		SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
-//		try {
-//			Date dateFormated = sdf.parse(date);
-//			Calendar cal = Calendar.getInstance();
-//			cal.setTime(dateFormated);
-//			DateFormat dateFormat = new SimpleDateFormat("dd-MM-yyyy");
-//			if (type.equals("init")) {
-//				cal.add(Calendar.DATE, -1);
-//				return dateFormat.format(cal.getTime());
-//			} else {
-//				cal.add(Calendar.DATE, 1);
-//				return dateFormat.format(cal.getTime());
-//			}
-//		} catch (Exception e) {
-//			e.getStackTrace();
-//			System.out.println(e.getMessage());
-//		}
-//		return date;
-//	}
 
 	public static boolean stringContainsItemFromList(String inputStr, String[] items) {
 		return Arrays.stream(items).anyMatch(inputStr::contains);
@@ -231,10 +250,13 @@ public class CommitsCompare {
 		List<String> commitHashs = new ArrayList<String>();
 
 		for (RevCommit revC : rc) {
-			commitHashs.add(revC.getName());
+			if (!revCommitsAnalyzed.contains(projectName + "-" + revC.getName())) {
+				commitHashs.add(revC.getName());
+				revCommitsAnalyzed.add(projectName + "-" + revC.getName());
+			}
 		}
 
-		if (commitHashs.size() <= 100) {
+		if (commitHashs.size() <= 100 && commitHashs.size() > 0) {
 			System.out.println(projectName + ": " + commitHashs.size());
 			RepositoryWalker walker = new RepositoryWalker(projectName, projectPath, commitHashs);
 			walker.walk();
@@ -247,27 +269,23 @@ public class CommitsCompare {
 	}
 
 	private static Set<String> CheckForModernizationIncidents(String results_dir, String projectName,
-			String projectPath, String featureChanged) throws Exception {
+			String projectPath, String featureChanged, String path) throws Exception {
 
 		ReaderResults rs = new ReaderResults();
 
 		Set<String> commits = new HashSet<String>();
 		List<String> specialCases = rs.read(results_dir);
+		specialCases.removeIf(s -> s.contains("previousHash"));
 		specialCases.stream().forEach(System.out::println);
 		try {
 			for (String cmt : specialCases) {
 				List<String> lines = new ArrayList<String>();
 				String[] splitered = cmt.split(",");
-				if (splitered[2].equals("previousHash") || splitered[2].equals("changesHash")) {
-					continue;
-				} else {
-					List<String> modernize = new ArrayList<String>();
+				List<String> modernize = new ArrayList<String>();
+				lines = readAllDataAtOnce(results_dir);
 
-					findEffortsToModernize(splitered[2], splitered[5], results_dir, projectName, projectPath,
-							featureChanged);
-					lines = readAllDataAtOnce(results_dir);
-					List<String> cases = rs.read(results_dir);
-					for (String c : cases) {
+				if (specialCases.size() == 1) {
+					for (String c : specialCases) {
 						String[] data = c.split(",");
 						modernize = lines.stream().filter(t -> t.contains(data[5])).collect(Collectors.toList());
 					}
@@ -275,6 +293,41 @@ public class CommitsCompare {
 						String line = m.substring(0, m.lastIndexOf(",") - 1);
 						commits.add(line + featureChanged);
 					}
+					break;
+				}
+				SimpleDateFormat sdf = new SimpleDateFormat("MM/dd/yyyy HH:mm:ss");
+
+				File file = new File(results_dir);
+
+				String start = sdf.format(file.lastModified());
+
+				specialCases(splitered[2], splitered[5], results_dir, projectName, projectPath, featureChanged, path);
+
+				String end = sdf.format(file.lastModified());
+
+				if (!start.equals(end)) {
+					lines = readAllDataAtOnce(results_dir);
+					List<String> cases = rs.read(results_dir);
+					cases.removeIf(s -> s.contains("previousHash"));
+					if (cases.size() == 1) {
+						for (String c : cases) {
+							String[] data = c.split(",");
+							modernize = lines.stream().filter(t -> t.contains(data[5])).collect(Collectors.toList());
+						}
+						for (String m : modernize) {
+							String line = m.substring(0, m.lastIndexOf(",") - 1);
+							commits.add(line + featureChanged);
+						}
+					} else if (cases.size() > 1) {
+						for (String c : cases) {
+							String[] data = c.split(",");
+							specialCases(data[2], data[5], results_dir, projectName, projectPath, featureChanged, path);
+						}
+					}
+				} else {
+					String since = splitered[2];
+					String until = splitered[5];
+					modernizeInCommitMsgs(since, until, results_dir, projectName, projectPath, featureChanged, path);
 				}
 			}
 		} catch (Exception e) {
@@ -294,11 +347,11 @@ public class CommitsCompare {
 			if (data[0].equals("Project") || previousProject.equals(data[0]) || data[8].equals("deletions")) {
 				continue;
 			}
-			System.out.println("Cloning: " + data[0] + " ....");
 			try {
 				file = new File(directory);
-				File project = new File(directory + "\\" + data[0]);
+				File project = new File(directory + osValidation.osBarLine() + data[0]);
 				if (!project.exists()) {
+					System.out.println("Cloning: " + data[0] + " ....");
 					project.mkdir();
 					Git git = Git.cloneRepository().setURI("https://github.com/KDE/" + data[0] + ".git")
 							.setDirectory(project).call();

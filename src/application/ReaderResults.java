@@ -88,8 +88,6 @@ public class ReaderResults {
 
 	}
 
-//	feature + (feature * 0.5) > feature && statements < statements + (statements * 0.5)  --> por projeto
-
 	public void CheckChangesIsInteresting(int value, String feature, String project, String date, String hash,
 			int files, int statements) throws Exception {
 		switch (feature) {
