@@ -4,129 +4,146 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 public class ReaderResults {
 
-	public int previousLambda = 0;
-	public int previousAuto = 0;
-	public int previousRangedFor = 0;
-	public int previousConstExpr = 0;
+	public int previousFeature = 0;
 	public int previousStatements = 0;
 	public String previousHash = null;
 	public String previousDate = null;
 	public int previousFiles = 0;
 	public float step = 0.5f;
 
+	public int statementsKey = 0;
+	public int filesKey = 0;
+	public int hashKey = 0;
+	public int dateKey = 0;
+	public int projectKey = 0;
+
 	public List<String> interestingCases = new ArrayList<String>();
 
 	public String currentProject = null;
 
-	public List<String> read(String path) throws NumberFormatException, Exception {
+	public HashMap<String, Integer> keyFeatures = new HashMap<>();
+
+	public HashMap<String, Integer> allKeys(String path, ArrayList<String> features) {
+		HashMap<String, Integer> allFeatures = new HashMap<>();
 		String line = "";
 		String splitBy = ",";
-
 		try (BufferedReader br = new BufferedReader(new FileReader(path))) {
 			while ((line = br.readLine()) != null) {
-
 				String[] commit = line.split(splitBy);
-
-				if (commit[0].startsWith("project")) {
-					interestingCases.add(
-							"Project,previousDate,previousHash,previousValue,changesDate,changesHash,newValue,featureChanges,action");
-					continue;
+				if (commit[projectKey].startsWith("project")) {
+					for (String feature : features) {
+						for (int i = 0; i < commit.length; i++) {
+							if (commit[i].equals("statements")) {
+								statementsKey = i;
+							} else if (commit[i].equals("files")) {
+								filesKey = i;
+							} else if (commit[i].equals("revision")) {
+								hashKey = i;
+							} else if (commit[i].equals("date")) {
+								dateKey = i;
+							} else if (commit[i].equals("project")) {
+								projectKey = i;
+							} else if (commit[i].equals(feature)) {
+								allFeatures.put(feature, i);
+							}
+						}
+					}
+					break;
 				}
-
-				if (currentProject == null) {
-					currentProject = commit[0];
-				}
-
-				if (currentProject.equals(commit[0])) {
-
-					CheckChangesIsInteresting(Integer.parseInt(commit[4]), "lambda", currentProject, commit[1],
-							commit[2], Integer.parseInt(commit[3]), Integer.parseInt(commit[16]));
-					CheckChangesIsInteresting(Integer.parseInt(commit[5]), "auto", currentProject, commit[1], commit[2],
-							Integer.parseInt(commit[3]), Integer.parseInt(commit[16]));
-					CheckChangesIsInteresting(Integer.parseInt(commit[7]), "ranged-for", currentProject, commit[1],
-							commit[2], Integer.parseInt(commit[3]), Integer.parseInt(commit[16]));
-
-					previousHash = commit[2];
-					previousDate = commit[1];
-					previousFiles = Integer.parseInt(commit[3]);
-
-				} else {
-					currentProject = commit[0];
-					previousHash = null;
-					previousDate = null;
-					previousLambda = 0;
-					previousAuto = 0;
-					previousRangedFor = 0;
-					previousConstExpr = 0;
-					previousFiles = 0;
-
-					CheckChangesIsInteresting(Integer.parseInt(commit[4]), "lambda", currentProject, commit[1],
-							commit[2], Integer.parseInt(commit[3]), Integer.parseInt(commit[16]));
-					CheckChangesIsInteresting(Integer.parseInt(commit[5]), "auto", currentProject, commit[1], commit[2],
-							Integer.parseInt(commit[3]), Integer.parseInt(commit[16]));
-					CheckChangesIsInteresting(Integer.parseInt(commit[7]), "ranged-for", currentProject, commit[1],
-							commit[2], Integer.parseInt(commit[3]), Integer.parseInt(commit[16]));
-
-					previousHash = commit[2];
-					previousDate = commit[1];
-				}
-
-				previousStatements = Integer.parseInt(commit[16]);
-
 			}
-			br.close();
-		} catch (IOException e) {
+		} catch (Exception e) {
 			e.printStackTrace();
 		}
+		return allFeatures;
+	}
 
+	public List<String> read(String path, ArrayList<String> features) throws NumberFormatException, Exception {
+		String line = "";
+		String splitBy = ",";
+		Integer keyVal = -1;
+		Boolean header = false;
+
+		keyFeatures = allKeys(path, features);
+
+		for (Map.Entry<String, Integer> entry : keyFeatures.entrySet()) {
+			String feature = entry.getKey();
+			keyVal = entry.getValue();
+
+			try (BufferedReader br = new BufferedReader(new FileReader(path))) {
+				while ((line = br.readLine()) != null) {
+
+					String[] commit = line.split(splitBy);
+
+					if (commit[projectKey].startsWith("project")) {
+						if (header == false) {
+							interestingCases.add(
+									"Project,previousDate,previousHash,previousValue,changesDate,changesHash,newValue,featureChanges,action");
+							header = true;
+						}
+						continue;
+					}
+
+					if (currentProject == null) {
+						currentProject = commit[projectKey];
+					}
+
+					if (currentProject.equals(commit[projectKey])) {
+
+						CheckChangesIsInteresting(Integer.parseInt(commit[keyVal]), feature, currentProject,
+								commit[dateKey],
+								commit[hashKey], Integer.parseInt(commit[filesKey]),
+								Integer.parseInt(commit[statementsKey]));
+
+						previousHash = commit[hashKey];
+						previousDate = commit[dateKey];
+						previousFiles = Integer.parseInt(commit[filesKey]);
+
+					} else {
+						currentProject = commit[projectKey];
+						previousHash = null;
+						previousDate = null;
+						previousFeature = 0;
+						previousFiles = 0;
+
+						CheckChangesIsInteresting(Integer.parseInt(commit[keyVal]), feature, currentProject,
+								commit[dateKey],
+								commit[hashKey], Integer.parseInt(commit[filesKey]),
+								Integer.parseInt(commit[statementsKey]));
+
+						previousHash = commit[hashKey];
+						previousDate = commit[dateKey];
+					}
+
+					previousStatements = Integer.parseInt(commit[statementsKey]);
+
+				}
+				br.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
 		return interestingCases.stream().collect(Collectors.toList());
 
 	}
 
 	public void CheckChangesIsInteresting(int value, String feature, String project, String date, String hash,
 			int files, int statements) throws Exception {
-		switch (feature) {
-		case "lambda":
-			if (value > previousLambda + (previousLambda * step)
-					&& statements < previousStatements + (previousStatements * 0.05) && previousLambda > 20) {
-				interestingCases.add(project + "," + previousDate + "," + previousHash + "," + previousLambda + ","
-						+ date + "," + hash + "," + value + "," + feature + ",addtions");
-			} else if (value < previousLambda * step && statements < previousStatements * 0.05 && previousLambda > 20) {
-				interestingCases.add(project + "," + previousDate + "," + previousHash + "," + previousLambda + ","
-						+ date + "," + hash + "," + value + "," + feature + ",deletions");
-			}
-			previousLambda = value;
-			break;
-		case "auto":
-			if (value > previousAuto + (previousAuto * step)
-					&& statements < previousStatements + (previousStatements * 0.05) && previousAuto > 20) {
-				interestingCases.add(project + "," + previousDate + "," + previousHash + "," + previousAuto + "," + date
-						+ "," + hash + "," + value + "," + feature + ",addtions");
-			} else if (value < previousAuto * step && statements < previousStatements * 0.05 && previousAuto > 20) {
-				interestingCases.add(project + "," + previousDate + "," + previousHash + "," + previousAuto + "," + date
-						+ "," + hash + "," + value + "," + feature + ",deletions");
-			}
-			previousAuto = value;
-			break;
-		case "ranged-for":
-			if (value > previousRangedFor + (previousRangedFor * step)
-					&& statements < previousStatements + (previousStatements * 0.05) && previousRangedFor > 20) {
-				interestingCases.add(project + "," + previousDate + "," + previousHash + "," + previousRangedFor + ","
-						+ date + "," + hash + "," + value + "," + feature + ",addtions");
-			} else if (value < previousRangedFor * step && statements < previousStatements * 0.05
-					&& previousRangedFor > 20) {
-				interestingCases.add(project + "," + previousDate + "," + previousHash + "," + previousRangedFor + ","
-						+ date + "," + hash + "," + value + "," + feature + ",deletions");
-			}
-			previousRangedFor = value;
-			break;
-		default:
-			break;
+		if (value > previousFeature + (previousFeature * step)
+				&& statements < previousStatements + (previousStatements * 0.05) && previousFeature > 10) {
+			interestingCases.add(project + "," + previousDate + "," + previousHash + "," + previousFeature + "," + date
+					+ "," + hash + "," + value + "," + feature + ",addtions");
+		} else if (value < previousFeature - (previousFeature * step)
+				&& statements < previousStatements - (previousStatements * 0.05) && previousFeature > 10) {
+			interestingCases.add(project + "," + previousDate + "," + previousHash + "," + previousFeature + "," + date
+					+ "," + hash + "," + value + "," + feature + ",deletions");
 		}
+		previousFeature = value;
 	}
 }

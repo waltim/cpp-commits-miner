@@ -5,6 +5,7 @@ import java.io.IOException;
 import java.io.PrintStream;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -12,26 +13,35 @@ public class Program {
 
 	public static void main(String[] args) throws Exception {
 
-		if (args.length == 0 || args[0].isEmpty()) {
+		if (args.length < 2 || args[0].isEmpty()) {
+			System.out.println("You need to pass two parameters: --path and --features.");
 			System.exit(1);
 		}
 
 		String path = "";
+		ArrayList<String> features = new ArrayList<>();
 
 		if (args[0].startsWith("--path")) {
 			path = args[0].replace("--path=", "");
 		}
+		
+		if (args[1].startsWith("--features")) {
+			String[] list = args[1].replace("--features=", "").split(",");
+			for (int i = 0; i < list.length; i++) {
+				features.add(list[i]);
+			}
+		}
 
 		ReaderResults rs = new ReaderResults();
 
-		List<String> specialCases = rs.read(path + "datasets" + osValidation.osBarLine() + "full-results.csv");
+		List<String> specialCases = rs.read(path + osValidation.osBarLine() + "results.csv",features);
 
 		List<String> list = specialCases.stream().collect(Collectors.toList());
 
 		try {
-			Files.deleteIfExists(Paths.get(path + "datasets" + osValidation.osBarLine() + "specialCases.csv"));
+			Files.deleteIfExists(Paths.get(path + osValidation.osBarLine() + "specialCases.csv"));
 			PrintStream fileStream = new PrintStream(
-					new File(path + "datasets" + osValidation.osBarLine() + "specialCases.csv"));
+					new File(path + osValidation.osBarLine() + "specialCases.csv"));
 			for (String project : list) {
 				fileStream.println(project.toString());
 			}
@@ -42,10 +52,10 @@ public class Program {
 			e.printStackTrace();
 		}
 
-		String directory = path + "projects";
-		String results_dir = path + "out" + osValidation.osBarLine() + "results.csv";
+		 String directory = path + "/../dataset";
+		 String results_dir = directory + "/js-miner-out";
 
-		CommitsCompare.compare(list, directory, results_dir, path);
+		 CommitsCompare.compare(list, directory, results_dir, path,features);
 
 	}
 }
