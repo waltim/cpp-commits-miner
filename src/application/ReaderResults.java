@@ -122,7 +122,6 @@ public class ReaderResults {
 					}
 
 					previousStatements = Integer.parseInt(commit[statementsKey]);
-
 				}
 				br.close();
 			} catch (IOException e) {
@@ -136,11 +135,11 @@ public class ReaderResults {
 	public void CheckChangesIsInteresting(int value, String feature, String project, String date, String hash,
 			int files, int statements) throws Exception {
 		if (value > previousFeature + (previousFeature * step)
-				&& statements < previousStatements + (previousStatements * 0.05) && previousFeature > 10) {
+				&& statements < previousStatements + (previousStatements * 0.5) && previousFeature > 10) {
 			interestingCases.add(project + "," + previousDate + "," + previousHash + "," + previousFeature + "," + date
 					+ "," + hash + "," + value + "," + feature + ",addtions");
 		} else if (value < previousFeature - (previousFeature * step)
-				&& statements < previousStatements - (previousStatements * 0.05) && previousFeature > 10) {
+				&& statements < previousStatements - (previousStatements * 0.5) && previousFeature > 10) {
 			interestingCases.add(project + "," + previousDate + "," + previousHash + "," + previousFeature + "," + date
 					+ "," + hash + "," + value + "," + feature + ",deletions");
 		}

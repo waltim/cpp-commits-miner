@@ -20,7 +20,6 @@ import org.eclipse.jgit.lib.PersonIdent;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.revwalk.RevCommit;
 import org.eclipse.jgit.revwalk.filter.CommitTimeRevFilter;
-import org.eclipse.jgit.revwalk.filter.RevFilter;
 import org.eclipse.jgit.api.ListBranchCommand;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.api.ResetCommand;
@@ -30,7 +29,6 @@ import com.opencsv.CSVReaderBuilder;
 
 import br.unb.cic.js.App;
 import lombok.val;
-
 
 public class CommitsCompare {
 
@@ -236,15 +234,18 @@ public class CommitsCompare {
 					revCommitsAnalyzed.add(projectName + "-" + revC.getName());
 				}
 			}
-
-			 if (commitHashs.size() <= 100 && commitHashs.size() > 0) {
+			if (commitHashs.size() == 0) {
+				String[] data = commit.split(",");
+				modernizeCommits.add(projectName+","+data[5]+","+data[6]+","+featureChanged);
+				modernizeInCommitMsgs(since, until, results_dir, projectName, projectPath, featureChanged, path);
+			} else if (commitHashs.size() <= 100 && commitHashs.size() > 0) {
 				System.out.println(projectName + ": " + commitHashs.size());
 				SimpleDateFormat sdf = new SimpleDateFormat("dd-MM-yyyy");
-				String sinceDate = sdf.format(DateUtils.addDays(getCommitDate(repository, since), -1));
-				String untilDate = sdf.format(DateUtils.addDays(getCommitDate(repository, until), +1));
+				String sinceDate = sdf.format(getCommitDate(repository, since,"minusDays"));
+				String untilDate = sdf.format(getCommitDate(repository, until,"addDays"));
 				try {
 					App.main(new String[] { "-d", projectPath, "-p", projectName, "-s", "0", "-id", sinceDate, "-ed",
-							untilDate, "-ft", "1", "-pt", "1"});
+							untilDate, "-ft", "1", "-pt", "1" });
 				} catch (OutOfMemoryError error) {
 					error.getStackTrace();
 				} catch (Exception e) {
@@ -259,12 +260,17 @@ public class CommitsCompare {
 		git.close();
 	}
 
-	public static Date getCommitDate(Repository repository, String objectId) {
+	public static Date getCommitDate(Repository repository, String objectId, String type) {
 		try {
 			ObjectId commitId = repository.resolve(objectId);
 			RevCommit commit = repository.parseCommit(commitId);
 			PersonIdent authorIdent = commit.getAuthorIdent();
 			Date commitDate = authorIdent.getWhen();
+			if(type.equals("addDays")){
+				commitDate = DateUtils.addDays(commitDate, +1);
+			}else{
+				commitDate = DateUtils.addDays(commitDate, -1);
+			}
 			return commitDate;
 		} catch (Exception e) {
 			System.out.println(e.getMessage());
@@ -276,16 +282,15 @@ public class CommitsCompare {
 	public static Iterable<RevCommit> listCommitsInBranchWithinRange(Repository repository, String branchName,
 			String sinceRevision, String untilRevision) throws GitAPIException, IOException {
 		try (Git git = new Git(repository)) {
-			Date initial = getCommitDate(repository,sinceRevision);
-			Date end = getCommitDate(repository,untilRevision);
+			Date initial = getCommitDate(repository, sinceRevision,"minusDays");
+			Date end = getCommitDate(repository, untilRevision, "addDays");
 
 			val head = repository.resolve("refs/heads/" + branchName);
 
 			Iterable<RevCommit> revisions = git.log()
-                .add(head)
-                .setRevFilter(CommitTimeRevFilter.between(initial, end))
-                .setRevFilter(RevFilter.NO_MERGES)
-                .call();
+					.add(head)
+					.setRevFilter(CommitTimeRevFilter.between(initial, end))
+					.call();
 
 			return revisions;
 		}

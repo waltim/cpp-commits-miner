@@ -7,6 +7,7 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 public class Program {
@@ -24,7 +25,7 @@ public class Program {
 		if (args[0].startsWith("--path")) {
 			path = args[0].replace("--path=", "");
 		}
-		
+
 		if (args[1].startsWith("--features")) {
 			String[] list = args[1].replace("--features=", "").split(",");
 			for (int i = 0; i < list.length; i++) {
@@ -34,7 +35,7 @@ public class Program {
 
 		ReaderResults rs = new ReaderResults();
 
-		List<String> specialCases = rs.read(path + osValidation.osBarLine() + "results.csv",features);
+		List<String> specialCases = rs.read(path + osValidation.osBarLine() + "results.csv", features);
 
 		List<String> list = specialCases.stream().collect(Collectors.toList());
 
@@ -52,10 +53,23 @@ public class Program {
 			e.printStackTrace();
 		}
 
-		 String directory = path + "/../dataset";
-		 String results_dir = directory + "/js-miner-out";
+		String directory = path + "/../dataset";
+		String results_dir = directory + "/js-miner-out";
 
-		 CommitsCompare.compare(list, directory, results_dir, path,features);
+		Set<String> modernizeCommits = CommitsCompare.compare(list, directory, results_dir, path, features);
 
+		try {
+			PrintStream fileStream = new PrintStream(
+					new File(path + osValidation.osBarLine() + "modernizations.csv"));
+			for (String mc : modernizeCommits) {
+				fileStream.println(mc);
+			}
+			fileStream.close();
+		} catch (OutOfMemoryError error) {
+			error.getStackTrace();
+		} catch (Exception e) {
+			System.out.println(e.getMessage());
+			e.getStackTrace();
+		}
 	}
 }
