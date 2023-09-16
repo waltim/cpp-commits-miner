@@ -54,7 +54,7 @@ public class CommitsCompare {
 
 			String projectPath = directory + "/" + data[0];
 			String projectName = data[0];
-			results_dir = results_dir + "/results.csv";
+			results_dir = results_dir + "/"+projectName+".csv";
 			String since = data[2];
 			String until = data[5];
 
@@ -245,7 +245,7 @@ public class CommitsCompare {
 				String untilDate = sdf.format(getCommitDate(repository, until,"addDays"));
 				try {
 					App.main(new String[] { "-d", projectPath, "-p", projectName, "-s", "0", "-id", sinceDate, "-ed",
-							untilDate, "-ft", "1", "-pt", "1" });
+							untilDate, "-ft", "10", "-pt", "1" });
 				} catch (OutOfMemoryError error) {
 					error.getStackTrace();
 				} catch (Exception e) {

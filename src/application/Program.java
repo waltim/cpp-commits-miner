@@ -54,7 +54,7 @@ public class Program {
 		}
 
 		String directory = path + "/../dataset";
-		String results_dir = directory + "/js-miner-out";
+		String results_dir = directory + "/jsminer-out";
 
 		Set<String> modernizeCommits = CommitsCompare.compare(list, directory, results_dir, path, features);
 
